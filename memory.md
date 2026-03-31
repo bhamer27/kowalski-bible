@@ -109,6 +109,18 @@ Source: Rebuilt from full Discord conversation history (2,314 messages, March 2 
 
 **The problem with current campaign:** Emails scraped were generic (info@, restaurant@). Nobody making decisions checks those. Reply rate should be 1.5-3%+.
 
+**EMAIL SCRAPING RULES — NEVER VIOLATE:**
+- ACCEPT: owner@, gm@, manager@, director@, chef@, proprietor@ on the restaurant own domain
+- ACCEPT: named personal emails (sugar@jitladala.com, ben@restaurantname.com) on own domain
+- ACCEPT: Gmail/Hotmail/Yahoo only if it clearly belongs to the business (restaurantname@gmail.com)
+- REJECT: Any email not on the restaurant own domain UNLESS it is a personal Gmail/Hotmail/Yahoo
+- REJECT: toasttab.com, clover.com, allsetnow.com, popmenu.com, bentobox.com, zuppler.com, dylish.com, bopple.com, owner.com, smartonlineorder.com, beyondmenu.com, menupages.com — these are SaaS platforms, not the business
+- REJECT: user@domain.com, info@domain.com style placeholders
+- REJECT: support@, events@, accessibility@, noreply@, hello@ — not decision makers
+- REJECT: Any email where the domain does not match the restaurant website domain AND is not a personal email provider
+- If no valid email found: SKIP the lead entirely. Never guess or use a placeholder.
+- Quality over quantity. 500 real owner emails beat 2000 junk ones every time.
+
 **Pipeline status (March 31):**
 - 150 leads scraped so far (NYC + LA), 96 clean after junk filter
 - Running again with 8hr timeout, targeting 2,000 total
