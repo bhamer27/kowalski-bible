@@ -325,12 +325,13 @@ All channels read from and write to this memory.md. One brain, all channels.
 - UNUSUAL_WHALES_API_KEY
 - KALSHI_API_KEY
 - HUNTER_API_KEY (10k credits, for Re-Voo email enrichment)
-- INSTANTLY_API_KEY (v2)
+- INSTANTLY_API_KEY (v2): NmIwNjBkMWQtZGViMS00ZTgwLTkyYjctYzA5YTU3ODdkNzhhOkpQRXN2QUt6bmFaUA== (use as Bearer token on v2 API)
+- API key: NmIwNjBkMWQtZGViMS00ZTgwLTkyYjctYzA5YTU3ODdkNzhhOkpQRXN2QUt6bmFaUA== (v2 Bearer auth)
 - DISCORD_BOT_TOKEN (may need regeneration after rebuild)
 - CRON_SECRET (rotate — was: qwertyuiopasdfghjklzxcvbnm)
 - NOTION_WEBHOOK_URL (re-verify after rebuild)
 - NAMECHEAP_API_KEY (for DNS automation)
-- GITHUB_PAT: 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 (used in git push -- may need rotation)
+- GITHUB_PAT: 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 (used in git push -- may need rotation)
 - RESEND_API_KEY: re_YW3vqqZo_CFsu2TErNa7KBuKbA4GNcGZ1 (AnswerDine lifecycle emails)
 - YELP_FUSION_API_KEY (Roughin scraper -- free tier, fusion.yelp.com)
 - GOOGLE_ADS_DEVELOPER_TOKEN (pending approval -- needs MCC account setup)
