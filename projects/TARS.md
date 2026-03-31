@@ -30,20 +30,20 @@
 
 ### Unusual Whales (Flow Data)
 - **Provider:** Unusual Whales
-- **API version:** `[DECIDE: e.g., v2]`
 - **Base URL:** `https://api.unusualwhales.com`
 - **Data used:** Options flow alerts (real-time)
-- **Rate limits:** `[DECIDE: requests/min or as documented]`
-- **Auth method:** API key in `.env` → `UW_API_KEY`
+- **Auth method:** Bearer token in `.env` → `UW_API_KEY`
+- **Rate limits:** Check UW docs — respect per-minute limits
 
 ### Tradier (Brokerage / Execution)
 - **Provider:** Tradier
 - **Environment:** SANDBOX (do not switch to live without explicit instruction from Ben)
 - **Base URL (sandbox):** `https://sandbox.tradier.com/v1`
 - **Base URL (live — NOT ACTIVE):** `https://api.tradier.com/v1`
-- **Account type:** Margin
-- **Auth method:** OAuth bearer token in `.env` → `TRADIER_ACCESS_TOKEN`
-- **Account ID:** `.env` → `TRADIER_ACCOUNT_ID`
+- **Account type:** Margin, under $25K (PDT applies)
+- **Auth method:** Bearer token in `.env` → `TRADIER_ACCESS_TOKEN`
+- **Account ID:** `.env` → `TRADIER_ACCOUNT_ID` (VA1575604)
+- **⚠️ Sandbox only** — live keys are separate, never use live without Ben's explicit go
 
 ### Market Data (Regime Detection)
 - **VIX data source:** `[DECIDE: Tradier market data? Yahoo Finance? Other?]`
