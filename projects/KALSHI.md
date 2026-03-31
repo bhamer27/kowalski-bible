@@ -10,7 +10,8 @@
 - **Interface:** BenAdmin console (chat + position log)
 - **Platform:** Kalshi
 - **Market Types:** CPI, GDP, Fed rate decisions, political/elections
-- **Execution:** Fully automated — Kowalski enters and exits on its own
+- **Execution:** Automated — Kowalski enters and exits on its own
+- **Starting bankroll:** $500
 
 ---
 
@@ -23,24 +24,16 @@
 - **API docs:** `https://trading-api.readme.io`
 - **Base URL:** `https://trading-api.kalshi.com/trade-api/v2`
 - **Auth method:** RSA key pair — `.env` → `KALSHI_API_KEY` (UUID) + `KALSHI_PRIVATE_KEY` (RSA PEM)
-- **KALSHI_API_KEY:** `85a6d28e-1bc1-4f1b-a862-b2c0e36d69c4` ← store in .env, not here
-- **KALSHI_PRIVATE_KEY:** RSA private key from Replit secrets — store in .env on droplet
-- **Rate limits:** Check Kalshi docs
-- **Websocket:** `[DECIDE: real-time pricing via WS?]`
+- **KALSHI_API_KEY:** `85a6d28e-1bc1-4f1b-a862-b2c0e36d69c4` ← store in .env only
+- **KALSHI_PRIVATE_KEY:** RSA private key stored in `/root/.openclaw/kalshi_private.pem`
+- **Websocket:** Not used — polling only
 
 ### Data Sources (Research / Signals)
-- **CPI forecasting:** `[DECIDE: e.g., Cleveland Fed Nowcast, BLS data, custom model?]`
-  - URL: ___
-  - Auth: `[DECIDE: public or keyed?]`
-- **GDP forecasting:** `[DECIDE: e.g., Atlanta Fed GDPNow, custom model?]`
-  - URL: ___
-  - Auth: `[DECIDE: public or keyed?]`
-- **Fed rate probabilities:** `[DECIDE: e.g., CME FedWatch, custom?]`
-  - URL: ___
-  - Auth: `[DECIDE: public or keyed?]`
-- **Political data:** `[DECIDE: e.g., polling aggregators, other prediction markets?]`
-  - URL: ___
-  - Auth: `[DECIDE: public or keyed?]`
+- **CPI forecasting:** Cleveland Fed Nowcast (public, no key required) — `https://www.clevelandfed.org/indicators-and-data/inflation-nowcasting`
+- **GDP forecasting:** Atlanta Fed GDPNow (public) — `https://www.atlantafed.org/cqer/research/gdpnow`
+- **Fed rate probabilities:** CME FedWatch (public) — `https://www.cmegroup.com/markets/interest-rates/cme-fedwatch-tool.html`
+- **Political data:** Polymarket consensus + polling aggregates (public)
+- All signal sources are public/free — no additional API keys required
 
 ---
 
@@ -56,8 +49,8 @@
 - ❌ All other categories
 
 ### Market Filters
-- Minimum liquidity threshold: `[DECIDE: e.g., minimum open interest or daily volume]`
-- Minimum time until event resolution: Must be within the 3–7 day entry window (see Section 5)
+- Minimum open interest: 1,000 contracts
+- Must be within the 3–7 day entry window (see Section 5)
 
 ---
 
@@ -65,49 +58,49 @@
 
 ### Pricing Rules
 - **YES contract price range:** 10¢ – 85¢ only
-  - Never buy YES above 85¢ (not enough upside)
-  - Never buy YES below 10¢ (too speculative)
-- **Edge threshold:** `[DECIDE: e.g., only enter if estimated edge is > X% vs. market price]`
+  - Never buy YES above 85¢ (risk/reward too poor)
+  - Never buy YES below 10¢ (too speculative — lottery ticket territory)
 
-### Signal Sources
-- `[DECIDE: What triggers a Kalshi trade? Check all that apply]`
-  - [ ] Data model / quantitative signal
-  - [ ] Consensus vs. actual divergence play
-  - [ ] Arbitrage between Kalshi pricing and other sources
-  - [ ] Calendar-based (auto-position within entry window)
-  - [ ] Other: ___
+### Edge Threshold
+- Only enter if estimated probability edge is >5% vs. current market price
+- Example: model says 65% chance YES, contract priced at 55¢ = 10¢ edge = enter
+
+### Signal Sources — what triggers a Kalshi trade
+- Consensus vs. actual divergence play (primary) — model disagrees with market price
+- Data model signal — Cleveland Fed, GDPNow, CME FedWatch pointing away from consensus
+- Calendar-based — within entry window with clear directional signal
 
 ### Research Requirements
-- **Before CPI/GDP/jobs markets:** `[DECIDE: e.g., check Cleveland Fed Nowcast, consensus estimates, recent trends]`
-- **Before Fed rate markets:** `[DECIDE: e.g., check CME FedWatch, recent Fed speeches, economic data]`
-- **Before political markets:** `[DECIDE: e.g., check polling aggregates, prediction market consensus]`
-- **Minimum confirming signals:** `[DECIDE: e.g., at least 2 confirming data points before entering]`
+- **Before CPI/GDP markets:** Check Cleveland Fed Nowcast and GDPNow vs. consensus. Minimum 2 confirming data points.
+- **Before Fed rate markets:** Check CME FedWatch + recent Fed speeches + economic data trend. Minimum 2 confirming signals.
+- **Before political markets:** Check polling aggregates + Polymarket cross-reference. Minimum 2 confirming signals.
 
 ---
 
 ## 3. Position Sizing
 
 - **Max position per market:** $100
-- **Max total Kalshi exposure:** $500 across all open positions
+- **Max total Kalshi exposure:** $500 across all open positions (entire bankroll)
 - **Max positions open at once:** 5 (implied by $500 total / $100 per)
-- **Max exposure per category:** `[DECIDE: e.g., no more than $200 in political markets?]`
-- **Scaling into positions:** `[DECIDE: allowed? e.g., buy $50 now, add $50 if price improves within window?]`
+- **Max exposure per category:** $200 in political markets (more volatile/subjective)
+- **Scaling into positions:** Not allowed — one entry, full size
 
 ---
 
 ## 4. Exit Rules
 
 ### Profit Taking
-- **If bought below 70¢:** Sell if contract reaches 90¢
+- **If bought below 70¢:** Sell if contract reaches 90¢ — lock in gains, don't wait for resolution
 - **If bought at 70¢ or above:** Hold to resolution
-- **Partial exits:** Not used — all-or-nothing per position
+- **Exits are all-or-nothing** — no partial exits
 
 ### Stop Losses
-- **Cut losses at:** `[DECIDE: e.g., sell if contract drops X¢ below entry?]`
-- **Time-based exit:** Position auto-held through resolution unless profit target hit
+- **Cut losses:** Sell if contract drops 50% from entry price
+  - Example: bought at 40¢ → sell if drops to 20¢
+- **Time-based exit:** Hold through resolution unless profit target or stop hit
 
 ### Event-Driven Exits
-- If new data drops that directly contradicts the thesis → `[DECIDE: exit immediately? re-evaluate? hold?]`
+- If new data directly contradicts the thesis → exit immediately, don't average down
 - If event is postponed → exit position
 
 ---
@@ -115,18 +108,18 @@
 ## 5. Timing Rules
 
 - **Entry window:** 3–7 days before the event date
-- **No entries before 7 days out** (pricing too uncertain)
-- **No entries after 3 days out** (too close, price likely already reflects consensus)
+- **No entries before 7 days out** (pricing too uncertain, too much time to reverse)
+- **No entries after 3 days out** (priced in, spread to resolution vs. edge is too small)
 - **No entries within 1 hour of event resolution**
 
 ---
 
 ## 6. Risk Management
 
-- **Max daily loss:** -$150
-- **Max weekly loss:** -$300
-- **Circuit breaker behavior:** When triggered, halt all new entries. Existing positions held to resolution or profit target. Trading resumes only when Ben manually resets.
-- **Correlation check:** `[DECIDE: e.g., don't hold 3+ positions that all depend on the same data release?]`
+- **Max daily loss:** –$150 (30% of bankroll)
+- **Max weekly loss:** –$300 (entire bankroll, triggers full halt)
+- **Circuit breaker behavior:** When triggered, halt all new entries. Existing positions held to resolution or stop. Trading resumes only when Ben manually resets.
+- **Correlation check:** No more than 2 positions that depend on the same data release
 - **No hedging** — positions are small enough that hedging isn't worth the complexity
 
 ---
@@ -136,7 +129,7 @@
 - Log every position to BenAdmin: market name, category, entry price, exit price, contracts, thesis, outcome, P&L
 - Track hit rate by category (CPI, GDP, Fed, political)
 - Daily portfolio snapshot: posted to BenAdmin
-- Weekly/monthly performance review: posted to BenAdmin
+- Weekly performance review: posted to BenAdmin
 
 ---
 
@@ -146,3 +139,5 @@
 - Overrides are session-only unless marked permanent
 - All overrides logged with `[MANUAL OVERRIDE]` tag
 - Kowalski must confirm before executing override
+
+<!-- Updated: 2026-03-31 -->

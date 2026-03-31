@@ -13,6 +13,7 @@
 - **Mode:** B (scoring-based signal generation)
 - **Core Logic:** Score each UW flow alert → filter by thresholds → execute on Tradier sandbox → log to BenAdmin
 - **Account Type:** Under $25K (PDT restrictions apply)
+- **Starting capital (live):** ~$2,000
 
 ### What Kowalski Does Under TARS Rules
 1. Ingests UW flow data and posts it to a running list in BenAdmin
@@ -46,9 +47,8 @@
 - **⚠️ Sandbox only** — live keys are separate, never use live without Ben's explicit go
 
 ### Market Data (Regime Detection)
-- **VIX data source:** `[DECIDE: Tradier market data? Yahoo Finance? Other?]`
-- **SPY moving averages source:** `[DECIDE: same as above?]`
-- **Refresh interval:** `[DECIDE: e.g., every 5 min during market hours]`
+- **VIX + SPY data source:** Tradier market data API (same token)
+- **Refresh interval:** Every 5 minutes during market hours
 
 ---
 
@@ -56,42 +56,43 @@
 
 ### Scoring System
 - **Scale:** 0–100
-- **Minimum score to trade (default):** 70+
+- **Minimum score to trade (Low Vol regime):** 70+
 - **Minimum score in Elevated Vol regime:** 80+
-- Scoring factors and weights:
-  - Flow size relative to OI: `[DECIDE: weight]`
-  - Premium spent: `[DECIDE: weight]`
-  - Time to expiration: `[DECIDE: weight]`
-  - Repeat flow (same ticker/strike within timeframe): `[DECIDE: weight]`
-  - Sector momentum alignment: `[DECIDE: weight]`
-  - `[DECIDE: any other scoring factors?]`
+
+Scoring factors and weights:
+- Flow premium size: up to 30pts ($1M+ = 30, $500K+ = 22, $250K+ = 15, $100K+ = 8, <$100K = 3)
+- Sweep vs block: sweep = 15pts, block/split = 5pts
+- Volume/OI ratio: 3x+ = 20pts, 1.5x+ = 12pts, 0.5x+ = 6pts
+- DTE sweet spot (14-30): 15pts; 7-45: 8pts
+- Premium per contract ($0.50-$5.00): 10pts; >$0.20: 5pts
+- Elevated vol regime: multiply total by 0.9 (–10%)
 
 ### Allowed Trade Types
 - ✅ Long calls
 - ✅ Long puts
-- ❌ Call spreads (not allowed)
-- ❌ Put spreads (not allowed)
-- ❌ Iron condors (not allowed)
+- ❌ All other strategies (spreads, naked, etc.)
+
+Long-only = max loss is always exactly the premium paid. No margin risk, no assignment surprises.
 
 ### Ticker Filters
 - **Allowed tickers:** S&P 500 components only
-- **Minimum option volume:** `[DECIDE: e.g., 1000 contracts/day]`
+- **Minimum option OI:** 500 contracts
 
 ### Time Filters
-- **DTE range:** 7–45 days (shortened to 7–30 in Elevated Vol regime)
-- **No entries within 30 minutes of market open (9:30–10:00 AM ET)**
-- **No entries within 30 minutes of market close (3:30–4:00 PM ET)**
+- **DTE range:** 7–45 days (max 30 DTE in Elevated Vol regime)
+- **No entries 9:30–10:00 AM ET** (market open noise)
+- **No entries 3:30–4:00 PM ET** (close noise)
 
 ---
 
 ## 2. Position Sizing
 
-- **Default max per trade:** $200–$500 (Low Vol regime)
+- **Default per trade:** $200–$500 (Low Vol regime)
 - **Elevated Vol regime:** $100–$250 (half size)
 - **High Vol regime:** No new trades
 - **Max positions open at once:** 3
 - **Max positions per ticker:** 1
-- **Max total exposure:** ~$1,500 (3 positions × $500 max)
+- **Max total exposure:** ~$1,500 (3 × $500)
 - **Scaling into positions:** Not allowed — one entry per position
 
 ---
@@ -99,27 +100,25 @@
 ## 3. Exit Rules
 
 ### Profit Targets
-- **Default profit target:** +50% gain (Low Vol regime)
-- **Elevated Vol profit target:** +35% gain
-- **No trailing stops** — hit the target, take the money
+- **Default profit target:** +50% gain (all regimes)
+- **Elevated Vol:** +35% gain
+- **Clean exit:** Hit target, close full position, free up slot
 
 ### Stop Losses
-- **Default stop loss:** -25% (all regimes)
-- **Hard stop (no exceptions):** -25% — this is both the default and the hard floor
-- **Time-based exit:** `[DECIDE: e.g., close if held for X days with no movement?]`
+- **Hard stop:** –25% on premium, no exceptions, no override
+- **Time-based exit:** Close any position reaching < 7 DTE
 
 ### Forced Exits
-- **Close ALL positions by Friday EOD** — no weekend holding
-- **Close any position that reaches < 3 DTE remaining**
-- **Close all positions before blackout events** (see Section 7)
+- **Close ALL positions by Friday EOD** — no weekend holding (gap risk)
+- **Close before any blackout event** for that ticker
 
 ---
 
 ## 4. Regime Detection
 
 ### Inputs
-- VIX level (real-time)
-- SPY 20-day and 50-day moving averages
+- VIX level (real-time, from Tradier)
+- SPY 20-day and 50-day moving averages (from Tradier)
 - VIX term structure (front month vs second month)
 
 ### Regime 1: Low Vol / Trending
@@ -150,7 +149,7 @@
 - **PDT protection:** ENFORCED (account under $25K)
 - **Max day trades per rolling 5-day window:** 3
 - **Behavior when at PDT limit:** Block all new entries that would require a same-day exit. Allow only swing trades (hold overnight minimum).
-- **PDT override:** Only with explicit manual confirmation from Ben. Override is session-only and logged.
+- **PDT override:** Not allowed. Hard rule.
 
 ---
 
@@ -158,17 +157,16 @@
 
 These halt ALL trading when triggered. Trading resumes only when Ben manually resets.
 
-- **Max daily loss:** -$300
-- **Max weekly loss:** -$750
-- **Max consecutive losses:** `[DECIDE: e.g., 3 in a row → pause?]`
-- **Max daily trades:** `[DECIDE: e.g., 5 trades/day regardless of outcome?]`
-- **Flash crash protection:** `[DECIDE: e.g., if VIX spikes > 20% in 15 minutes, halt?]`
+- **Max daily loss:** –$300
+- **Max weekly loss:** –$750
+- **Max consecutive losses:** 3 in a row → pause, alert Ben
+- **Flash crash protection:** If VIX spikes >20% in 15 minutes → halt all entries
 
 ---
 
 ## 7. Blackout Periods
 
-**No new entries during these events.** Existing positions should be evaluated for early exit.
+**No new entries during these events.** Evaluate existing positions for early exit.
 
 - ✅ **FOMC announcement days** — no entries within 1 hour before or after
 - ✅ **CPI release days** — no entries within 1 hour before or after
@@ -182,7 +180,7 @@ These halt ALL trading when triggered. Trading resumes only when Ben manually re
 
 - **UW flow data:** Post every incoming flow alert to BenAdmin running list (regardless of score)
 - **Signals:** Log every scored signal (even if not traded): timestamp, ticker, strike, expiry, score, reason for pass/fail, current regime
-- **Trades:** Log every trade executed to BenAdmin: entry time, entry price, exit time, exit price, P&L, hold duration, score at entry, regime at entry
+- **Trades:** Log every trade executed: entry time, entry price, exit time, exit price, P&L, hold duration, score at entry, regime at entry
 - **Daily summary:** Post to BenAdmin at market close
 - **Weekly performance report:** Post to BenAdmin every Friday after all positions closed
 
@@ -192,5 +190,7 @@ These halt ALL trading when triggered. Trading resumes only when Ben manually re
 
 - Ben can override any rule in real-time via Discord DM or BenAdmin chat
 - Overrides last for the **current session only** unless Ben says "make this permanent"
-- All overrides are logged in BenAdmin trade log with `[MANUAL OVERRIDE]` tag (even if issued via Discord DM)
+- All overrides are logged in BenAdmin trade log with `[MANUAL OVERRIDE]` tag
 - Kowalski must confirm the override before executing: "Overriding [rule]. Proceeding with [action]. Confirm?"
+
+<!-- Updated: 2026-03-31 -->
