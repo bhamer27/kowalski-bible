@@ -22,9 +22,11 @@
 - **Provider:** Kalshi
 - **API docs:** `https://trading-api.readme.io`
 - **Base URL:** `https://trading-api.kalshi.com/trade-api/v2`
-- **Auth method:** API key pair in `.env` → `KALSHI_API_KEY` + `KALSHI_API_SECRET`
-- **Rate limits:** `[DECIDE: as documented — check current Kalshi API limits]`
-- **Websocket:** `[DECIDE: using websocket for real-time pricing? URL?]`
+- **Auth method:** RSA key pair — `.env` → `KALSHI_API_KEY` (UUID) + `KALSHI_PRIVATE_KEY` (RSA PEM)
+- **KALSHI_API_KEY:** `85a6d28e-1bc1-4f1b-a862-b2c0e36d69c4` ← store in .env, not here
+- **KALSHI_PRIVATE_KEY:** RSA private key from Replit secrets — store in .env on droplet
+- **Rate limits:** Check Kalshi docs
+- **Websocket:** `[DECIDE: real-time pricing via WS?]`
 
 ### Data Sources (Research / Signals)
 - **CPI forecasting:** `[DECIDE: e.g., Cleveland Fed Nowcast, BLS data, custom model?]`
