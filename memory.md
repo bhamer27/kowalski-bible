@@ -109,6 +109,12 @@ Source: Rebuilt from full Discord conversation history (2,314 messages, March 2 
 
 **The problem with current campaign:** Emails scraped were generic (info@, restaurant@). Nobody making decisions checks those. Reply rate should be 1.5-3%+.
 
+**Pipeline status (March 31):**
+- 150 leads scraped so far (NYC + LA), 96 clean after junk filter
+- Running again with 8hr timeout, targeting 2,000 total
+- Reply bot live on 3 getre-voo.com inboxes, polling every 5 min via Instantly unibox
+- bhamer@tryre-voo.com + ben.hamer@tryre-voo.com app passwords need refresh
+
 **Fix in progress:**
 - Hunter.io enrichment — run all 1,798 domains through Hunter API (1 credit per domain, 10k credits available)
 - Expected hit rate: 40-60% for named/role contacts
