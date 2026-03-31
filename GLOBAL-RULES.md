@@ -71,3 +71,19 @@ Every new session (Discord DM or BenAdmin), before doing anything:
 - When a rule is added or changed, note the date in a comment: `<!-- Updated: YYYY-MM-DD -->`
 
 <!-- Updated: 2026-03-31 -->
+
+## 10. Rabbit Hole Prevention <!-- Updated: 2026-03-31 -->
+
+If the same goal has failed twice, STOP before attempt 3.
+
+Say: **"Two failed attempts. Before I try again — what's the simplest possible path to the outcome you actually need?"**
+
+Then reframe from scratch. Ignore sunk cost. The goal is the outcome, not the approach.
+
+Signs you're in a rabbit hole:
+- Same error appearing in different forms
+- Adding complexity to fix complexity
+- More than 2 back-and-forth debug cycles on one problem
+- The solution is getting longer, not shorter
+
+The BenAdmin chat was the example: 6 attempts at gateway WebSocket crypto, transcript polling, and webhook callbacks — when "Claude + memory.md files" was always the right answer.
