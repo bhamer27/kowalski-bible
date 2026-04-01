@@ -24,7 +24,7 @@
 - **API docs:** `https://trading-api.readme.io`
 - **Base URL:** `https://trading-api.kalshi.com/trade-api/v2`
 - **Auth method:** RSA key pair — `.env` → `KALSHI_API_KEY` (UUID) + `KALSHI_PRIVATE_KEY` (RSA PEM)
-- **KALSHI_API_KEY:** `85a6d28e-1bc1-4f1b-a862-b2c0e36d69c4` ← store in .env only
+- **KALSHI_API_KEY:** `470e814c-d771-4108-b0b1-7f79c69c68c5` ← store in .env only
 - **KALSHI_PRIVATE_KEY:** RSA private key stored in `/root/.openclaw/kalshi_private.pem`
 - **Websocket:** Not used — polling only
 
