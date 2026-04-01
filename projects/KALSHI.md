@@ -140,4 +140,80 @@
 - All overrides logged with `[MANUAL OVERRIDE]` tag
 - Kowalski must confirm before executing override
 
-<!-- Updated: 2026-03-31 -->
+---
+
+## 9. Agent Architecture
+
+> This section defines the multi-agent pipeline for prediction market analysis. All existing rules (circuit breakers, position sizing, entry window, price range limits) remain fully in effect. This architecture runs on top of those rules — it cannot override them.
+
+---
+
+### Parallel Market Research Agents
+
+Each open Kalshi market in an allowed category (CPI, GDP, Fed, political) gets its own dedicated research agent.
+
+**Each agent:**
+- Ingests only news and data from the **last 7 days** (older information is considered priced in by the market)
+- Researches the specific event using relevant public data sources (Cleveland Fed Nowcast for CPI, GDPNow for GDP, CME FedWatch for Fed, polling aggregates for political)
+- Returns structured output:
+
+```json
+{
+  "market_id": "string",
+  "estimated_probability": 0.0-1.0,
+  "current_market_price": 0.0-1.0,
+  "implied_edge": "estimated_probability - current_market_price",
+  "confidence": "low|medium|high",
+  "rationale": "one line"
+}
+```
+
+**Constraint:** Agents only consume recent data. No historical analogies, no "in past cycles" reasoning — the market has already priced that in.
+
+---
+
+### Mispricing Agent
+
+Receives all parallel agent outputs simultaneously.
+
+**Responsibilities:**
+- Flags any market where implied edge exceeds minimum threshold (starting at 5 percentage points)
+- Ranks all flagged opportunities by edge size (largest edge first)
+- Applies correlation check: markets that are causally linked (e.g., CPI release and subsequent Fed rate decision) are flagged as correlated and cannot both receive full sizing — they are treated as one exposure bucket
+- Outputs ranked list of actionable mispricings with correlation flags
+
+**Advancement:** Only markets flagged by the Mispricing Agent proceed to the Orchestrator.
+
+---
+
+### Orchestrator
+
+Ingests Mispricing Agent output. Produces a single decision document:
+
+- **Ranked list of actionable positions** (highest edge first)
+- **Kelly-adjacent position sizing** per market based on edge size and confidence level — never exceeds $100/market cap from Section 3
+- **Portfolio-level exposure check:** No single market > $100, correlated markets treated as one bucket toward the $200 political cap and $500 total cap
+- **Entry rationale** for each position logged to memory.md and BenAdmin
+- **No-action output** if no edges clear the 5% threshold — explicitly states "no actionable edges found" rather than forcing a trade
+
+**The Orchestrator does not debate.** It either finds a clear edge or it doesn't.
+
+---
+
+### Ongoing Monitor (Async)
+
+Lightweight loop running continuously on all open positions.
+
+**Triggers a re-evaluation when:**
+- New relevant news drops (e.g., surprise inflation data before a CPI contract resolves)
+- Market price moves more than 10 percentage points from entry
+- Estimated probability has shifted materially based on new data
+
+**On re-evaluation:**
+- If edge has collapsed (estimated probability now aligns with market price): recommend exit or size reduction
+- If edge has grown (price moved against position but probability estimate unchanged): hold, log the divergence
+- Logs all exits and outcomes for future calibration of probability estimation accuracy
+
+**All outcomes feed back** into the parallel research agents' calibration — over time, the system learns which data sources and reasoning patterns produce accurate probability estimates.
+
+<!-- Updated: 2026-04-01 -->
