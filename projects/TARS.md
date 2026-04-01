@@ -193,4 +193,148 @@ These halt ALL trading when triggered. Trading resumes only when Ben manually re
 - All overrides are logged in BenAdmin trade log with `[MANUAL OVERRIDE]` tag
 - Kowalski must confirm the override before executing: "Overriding [rule]. Proceeding with [action]. Confirm?"
 
-<!-- Updated: 2026-03-31 -->
+---
+
+## 10. Agent Architecture
+
+> This section defines the multi-layer agent pipeline that replaces the single Python scoring loop. All existing rules (circuit breakers, PDT, position sizing, blackout periods) remain in full effect and are enforced at the Layer 1 filter stage before any LLM is invoked.
+
+### Layer 1 — Dumb Filter (No LLM)
+
+Pure Python pre-screen that runs against every incoming Unusual Whales signal before any agent is invoked. Runs in microseconds, costs nothing.
+
+**Hard rules:**
+- Minimum premium: $500k
+- Exclude 0DTE unless earnings is the explicit thesis
+- IV rank within acceptable range (per Section 1 scoring)
+- Expiry window: 7–45 DTE only
+- Underlying liquidity minimums: sufficient volume + bid/ask spread < 10% of mid
+- No entry within 2 days of earnings unless earnings is the thesis
+- All existing hard disqualifiers from Section 1 apply here
+
+**Goal:** Reduce thousands of daily signals to dozens of candidates. LLM stages never see noise.
+
+---
+
+### Layer 2 — Haiku Screener
+
+One Claude Haiku call per candidate that survived Layer 1.
+
+**Haiku evaluates:**
+- Flow pattern recognition (sweep vs block, repeat flow, institutional sizing)
+- Red flag detection (unusually low premium-per-contract, suspicious timing, earnings adjacency)
+- Overall conviction score: 1–10
+
+**Advancement threshold:** Score 7+ advances to Layer 3. Score <7 is logged as SKIP with reasoning.
+
+**Cost controls:**
+- Haiku only — never Sonnet at this stage
+- Each evaluation is max 3–5 lines of structured output, no raw feed data
+- Macro regime signal cached hourly, reused across all ticker evaluations in that window
+
+**Goal:** Dozens of candidates → 3–8 high-conviction setups per day.
+
+---
+
+### Layer 3 — Full 6-Stage Pipeline (Sonnet)
+
+Only runs on candidates that cleared both Layer 1 and Layer 2. Sonnet is used here exclusively.
+
+---
+
+#### Stage 1: Parallel Signal Ingestion (5 agents, parallel)
+
+Five agents run simultaneously, each owning exactly one data source:
+
+| Agent | Source | Output |
+|---|---|---|
+| Flow Agent | Unusual Whales flow data | Signal strength, direction bias, sweep/block classification |
+| IV Agent | IV rank + IV percentile | Premium environment, vol regime alignment |
+| Macro Agent | SPY trend + VIX level | Regime confirmation, trend alignment |
+| Catalyst Agent | Earnings calendar + event proximity | Binary risk, catalyst timeline |
+| Dark Pool Agent | Dark pool prints + OI changes | Institutional positioning, confirmation/divergence |
+
+Each agent returns structured JSON:
+```json
+{
+  "signal_strength": 1-10,
+  "direction_bias": "bullish|bearish|neutral",
+  "confidence": 1-10,
+  "rationale": "one line"
+}
+```
+
+---
+
+#### Stage 2: Adversarial Debate (2 agents, parallel)
+
+Two agents run in parallel with no visibility into each other's output:
+
+- **Bull Agent:** Builds the strongest possible case FOR the trade using Stage 1 outputs
+- **Bear Agent:** Builds the strongest possible case AGAINST — signal conflicts, regime mismatch, low liquidity, overextended moves
+
+Orchestrator receives both outputs. Neither agent's output alone determines the outcome — the orchestrator weighs both.
+
+---
+
+#### Stage 3: Risk Screener (sequential, runs before scenario modeling)
+
+Hard constraint checks that cannot be overridden by any debate output:
+
+- PDT status (rolling 5-day window)
+- DTE on the specific contract
+- Bid/ask spread viability at current market
+- Portfolio-level Greeks exposure (delta concentration, theta burn rate)
+- Existing correlated positions (same sector, same underlying, same catalyst)
+
+**If any hard constraint is tripped: pipeline stops here. No exceptions.**
+
+---
+
+#### Stage 4: Scenario Modeler (1 agent)
+
+One agent builds three outcomes using all prior stage data:
+
+- **Bull case:** Price target, probability estimate, expected return
+- **Base case:** Most likely path given current regime and signal strength
+- **Bear case:** Max loss scenario, probability of hitting hard stop
+
+Outputs a probability-weighted expected value (EV). **Negative weighted EV kills the trade regardless of Stage 2 outcome.**
+
+---
+
+#### Stage 5: Orchestrator (1 agent, final decision)
+
+Ingests all Stage 1–4 outputs. Produces:
+
+- **Go / No-go** decision
+- **Contract selection:** Specific strike + expiry recommendation
+- **Position size:** As % of portfolio (within Section 2 limits)
+- **Entry trigger:** Market vs. limit order, specific price level if limit
+- **Rationale:** One paragraph logged to memory.md and BenAdmin trade log
+
+---
+
+#### Stage 6: Post-Trade Monitor (async, runs continuously on open positions)
+
+Lightweight async loop watching all open positions:
+
+- Monitors IV crush risk as earnings approach
+- Flags if underlying crosses stop threshold before hard stop triggers
+- Recommends early exit if original thesis is invalidated by new flow data (e.g., large opposing sweep)
+- Logs full outcome on close (entry, exit, P&L, thesis validation/invalidation)
+- Feeds result back into Stage 1 signal weighting for future calibration
+
+---
+
+### Cost Summary
+
+| Layer | Model | Frequency | Purpose |
+|---|---|---|---|
+| Layer 1 | None (Python) | Every signal | Noise elimination |
+| Layer 2 | Haiku | Per L1 survivor | Quick conviction screen |
+| Stage 1 | Haiku | Per L2 survivor | Parallel signal ingestion |
+| Stages 2–5 | Sonnet | Per L1+L2 survivor | Full pipeline |
+| Stage 6 | Haiku | Per open position | Async monitoring |
+
+<!-- Updated: 2026-04-01 -->
